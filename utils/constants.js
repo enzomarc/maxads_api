@@ -1,0 +1,1 @@
+exports.AUTH_SECRET = 'MY_SECRET_CODE_FOR_AUTH';

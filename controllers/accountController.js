@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require("../models/user");
 const Verification = require('../models/verification');
 const helpers = require('../utils/helpers');
+const constants = require('../utils/constants');
 
 
 /**
@@ -57,7 +58,7 @@ exports.checkRegistration = async (req, res) => {
  */
 exports.verify = async (req, res) => {
   const code = req.params.code;
-  const phone = req.data.phone;
+  const phone = req.body.phone;
 
   await Verification.find({ phone: phone }, (err, verifications) => {
     if (err) {
@@ -65,49 +66,58 @@ exports.verify = async (req, res) => {
       return res.json(false);
     }
 
+    let i = 0;
+
+    if (verifications.length <= 0)
+      return res.json(false);
+
     verifications.forEach(async (verification) => {
+      i++;
+
       await bcrypt.compare(code, verification.code, async (err, same) => {
         if (err)
           console.error(err);
 
         if (same) {
           const now = new Date();
-          await User.findOne({ phone: verification.phone }, (err, doc) => {
+
+          await User.findOne({ phone: verification.phone }, async (err, doc) => {
             if (err) {
               console.error(err);
               return res.status(500).json(false);
             }
 
             if (doc != null) {
-              doc.update({ active: true, verified: true, lastConnection: now, lastVerification: now }, (err, updated) => {
+              await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now }, (err, updated) => {
                 if (err) {
                   console.error(err);
                   return res.status(500).json(false);
                 }
 
                 verification.deleteOne();
-                const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection }, Constants.AUTH_SECRET);
+                const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection }, constants.AUTH_SECRET);
                 return res.json({ token: token, phone: phone });
               });
             } else {
               const user = new User({ phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
-              user.save((err, doc) => {
+              await user.save((err, doc) => {
                 if (err) {
                   console.error(err);
                   return res.status(500).json(false);
                 }
 
                 verification.deleteOne();
-                const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection }, Constants.AUTH_SECRET);
+                const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection }, constants.AUTH_SECRET);
                 return res.json({ token: token, phone: phone });
               });
             }
           });
         }
       });
-    });
 
-    return false;
+      if (i == verifications.length)
+        return res.status(404).json(false);
+    });
   });
 }
 
