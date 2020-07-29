@@ -28,3 +28,18 @@ exports.sendSms = async (destination, sms) => {
       return false;
     });
 }
+
+/**
+ * Check if given phone format is correct
+ * 
+ * @param {string} phone 
+ */
+exports.checkPhone = (phone) => {
+  if (phone.length < 13)
+    return false;
+
+  if (!phone.startsWith('+237'))
+    return false;
+
+  return true;
+}

@@ -21,7 +21,7 @@ router.get('/', (req, res, next) => {
     return res.json({ app: 'MaxAds API', version: 'v1.0.0' });
 });
 
-router.get('/users/:phone/exists', accountController.exists);
-router.post('/sms/:phone', accountController.sendSMS);
+router.get('/check-registration/:phone', accountController.checkRegistration);
+router.get('/check-code/:code', accountController.verify);
 
 module.exports = router;
