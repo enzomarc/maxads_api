@@ -33,8 +33,8 @@ exports.checkRegistration = async (req, res) => {
           return res.status(500).json(false);
         }
 
-        const SMS = "Votre code MaxAds est " + code + ", vous pouvez appuyer sur ce lien pour vérifier votre appareil: https://v.maxads.com/" + code;
-        let sended = helpers.sendSms(phone, SMS);
+        const sms = "Votre code MaxAds est " + code + ", vous pouvez appuyer sur ce lien pour vérifier votre appareil: https://v.maxads.com/" + code;
+        let sended = helpers.sendSms(phone, sms);
 
         if (sended) {
           if (user != null)
@@ -57,7 +57,7 @@ exports.checkRegistration = async (req, res) => {
  * @param {*} res 
  */
 exports.verify = async (req, res) => {
-  const code = req.params.code;
+  const code = req.body.code;
   const phone = req.body.phone;
 
   await Verification.find({ phone: phone }, (err, verifications) => {
@@ -66,77 +66,97 @@ exports.verify = async (req, res) => {
       return res.json(false);
     }
 
-    let i = 0;
-
     if (verifications.length <= 0)
       return res.json(false);
 
+    let founded = false;
+
     verifications.forEach(async (verification) => {
-      i++;
+      if (bcrypt.compareSync(code, verification.code)) {
+        const now = new Date();
+        founded = true;
 
-      await bcrypt.compare(code, verification.code, async (err, same) => {
-        if (err)
-          console.error(err);
+        await User.findOne({ phone: verification.phone }, async (err, doc) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json(false);
+          }
 
-        if (same) {
-          const now = new Date();
+          if (doc != null) {
+            await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now }, (err, updated) => {
+              if (err) {
+                console.error(err);
+                return res.status(500).json(false);
+              }
 
-          await User.findOne({ phone: verification.phone }, async (err, doc) => {
-            if (err) {
-              console.error(err);
-              return res.status(500).json(false);
-            }
+              verification.deleteOne();
+              const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: false }, constants.AUTH_SECRET);
+              return res.json({ token: token, phone: phone });
+            });
+          } else {
+            const user = new User({ phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
+            await user.save((err, doc) => {
+              if (err) {
+                console.error(err);
+                return res.status(500).json(false);
+              }
 
-            if (doc != null) {
-              await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now }, (err, updated) => {
-                if (err) {
-                  console.error(err);
-                  return res.status(500).json(false);
-                }
-
-                verification.deleteOne();
-                const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection }, constants.AUTH_SECRET);
-                return res.json({ token: token, phone: phone });
-              });
-            } else {
-              const user = new User({ phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
-              await user.save((err, doc) => {
-                if (err) {
-                  console.error(err);
-                  return res.status(500).json(false);
-                }
-
-                verification.deleteOne();
-                const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection }, constants.AUTH_SECRET);
-                return res.json({ token: token, phone: phone });
-              });
-            }
-          });
-        }
-      });
-
-      if (i == verifications.length)
-        return res.status(404).json(false);
+              verification.deleteOne();
+              const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: true }, constants.AUTH_SECRET);
+              return res.json({ token: token, phone: phone });
+            });
+          }
+        });
+      }
     });
+
+    if (!founded)
+      return res.status(404).json(false);
   });
 }
 
-exports.exists = async (req, res) => {
-  const phone = req.body.phone;
-  const register = req.body.register;
+exports.auth = async (req, res) => {
+  const token = req.body.token;
 
-  await User.findOne({ phone: phone }, (err, doc) => {
+  if (token == null) return false;
+
+  await jwt.verify(token, constants.AUTH_SECRET, async (err, decoded) => {
     if (err) {
       console.error(err);
-      return res.status(500).json({ exists: false, error: err });
+      return res.status(401).json({ message: 'Invalid token provided.' });
     }
 
-    if (doc != null) {
-      if (register) sendSMS(phone);
+    if (decoded) {
+      const phone = decoded.phone;
 
-      return res.json({ user: doc, exists: true });
-    }
-    else
-      return res.json({ exists: false });
+      await User.findOne({ phone: phone }, async (err, user) => {
+        if (err) {
+          console.error(err);
+          return res.status(401).json({ message: "Error during user retrieve." });
+        }
+
+        if (user) {
+          if (user.verified && user.active) {
+            user.lastConnection = new Date();
+
+            await user.save((err, saved) => {
+              if (err) {
+                console.error(err);
+                return res.status(500).json({ message: "Invalid token provided." });
+              }
+
+              const token = jwt.sign({ phone: user.phone, lastVerification: user.lastVerification, lastConnection: user.lastConnection, new: false }, constants.AUTH_SECRET);
+              return res.json(token);
+            });
+          } else {
+            return res.status(401).json({ message: "User account is disabled." });
+          }
+        } else {
+          return res.status(401).json({ message: "Invalid token provided." })
+        }
+      });
+
+      return true;
+    } else return false;
   });
 }

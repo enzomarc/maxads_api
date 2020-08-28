@@ -5,6 +5,9 @@ const router = express.Router();
 const accountController = require('../controllers/accountController');
 const preferenceController = require('../controllers/preferenceController');
 
+// Middleware
+const authMiddleware = require('../middlewares/auth');
+
 // CORS Middleware
 router.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
