@@ -1,6 +1,5 @@
 const User = require("../models/user");
 const Preference = require("../models/preference");
-const { response } = require("express");
 
 
 /**
@@ -32,16 +31,21 @@ exports.store = async (req, res) => {
               return res.status(500).json({ message: "Impossible de modifier les paramètres de l'utilisateur.", error: err });
             }
 
-            return response.json({ message: "Paramètres modifiés avec succès." });
+            return res.json({ message: "Paramètres modifiés avec succès.", preference: preference });
           });
         } else {
-          await Preference.create(req.body, (err, doc) => {
+          const data = {
+            user_id: user._id,
+            ...req.body
+          };
+
+          await Preference.create(data, (err, doc) => {
             if (err) {
               console.error(err);
               return res.status(500).json({ message: "Impossible de modifier les paramètres de l'utilisateur.", error: err });
             }
 
-            return response.json({ message: "Paramètres modifiés avec succès." });
+            return res.json({ message: "Paramètres modifiés avec succès.", preference: doc });
           });
         }
       });
@@ -79,6 +83,50 @@ exports.show = async (req, res) => {
       });
     } else {
       return res.status(404).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur." });
+    }
+  });
+}
+
+/**
+ * Update user profile pic.
+ * 
+ * @param {*} req 
+ * @param {*} res 
+ */
+exports.avatar = async (req, res) => {
+  const phone = req.params.phone;
+
+  await User.findOne({ phone: phone }, async (err, user) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur.", error: err });
+    }
+
+    if (user) {
+      await Preference.findOne({ user_id: user._id }, async (err, preference) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur.", error: err });
+        }
+
+        if (preference) {
+          if (req.file != null) {
+            console.log(req.file);
+            preference.avatar = `${req.protocol}://${req.get('host')}/content/upload/pics/${req.file.filename}`;
+
+            await preference.save((err, saved) => {
+              if (err) {
+                console.error(err);
+                return res.status(500).json(false);
+              }
+
+              return res.json({ preference: saved });
+            });
+          }
+        } else {
+          return res.status(404).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur." });
+        }
+      });
     }
   });
 }

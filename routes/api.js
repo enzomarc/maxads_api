@@ -2,11 +2,13 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const router = express.Router();
 
+// Controllers
 const accountController = require('../controllers/accountController');
 const preferenceController = require('../controllers/preferenceController');
 
 // Middleware
 const authMiddleware = require('../middlewares/auth');
+const multerImages = require('../middlewares/multer_images');
 
 // CORS Middleware
 router.use((req, res, next) => {
@@ -25,12 +27,14 @@ router.get('/', (req, res, next) => {
     return res.json({ app: 'MaxAds API', version: 'v1.0.0' });
 });
 
-// Registration routes
+// Auth routes
 router.get('/check-registration/:phone', accountController.checkRegistration);
-router.get('/check-code/:code', accountController.verify);
+router.post('/check-code', accountController.verify);
+router.post('/auth', accountController.auth);
 
 // Preferences routes
 router.get('/preferences/:phone', preferenceController.show);
 router.post('/preferences/:phone', preferenceController.store);
+router.post('/preferences/:phone/avatar', multerImages, preferenceController.avatar);
 
 module.exports = router;

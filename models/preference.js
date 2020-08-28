@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 // Define the model schema
 const schema = new mongoose.Schema({
-  user_id: { type: mongoose.Types.ObjectId, ref: 'User' },
-  translate: Boolean,
-  translation_lang: String,
+  user_id: { type: mongoose.Types.ObjectId, ref: 'User', unique: true, required: true },
+  translate: { type: Boolean, default: false },
+  translation_lang: { type: String, default: 'none' },
   description: String,
   username: String,
   avatar: String,
@@ -21,7 +21,7 @@ const schema = new mongoose.Schema({
         default: 'image'
       },
       color: String,
-      url: String
+      url: { type: String, default: '' }
     },
     font_size: {
       type: String,
@@ -57,7 +57,7 @@ const schema = new mongoose.Schema({
       },
       contacts: [String]
     },
-    read_confirmation: Boolean,
+    read_confirmation: { type: Boolean, default: true },
     group_add: {
       type: String,
       enum: ['no-one', 'everybody', 'contacts'],
