@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require("../models/user");
 const Verification = require('../models/verification');
+const Preference = require('../models/preference');
 const helpers = require('../utils/helpers');
 const constants = require('../utils/constants');
 
@@ -83,15 +84,18 @@ exports.verify = async (req, res) => {
           }
 
           if (doc != null) {
-            await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now }, (err, updated) => {
+            await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now }, async (err, updated) => {
               if (err) {
                 console.error(err);
                 return res.status(500).json(false);
               }
 
+              const preference = await Preference.findOne({ user_id: doc._id });
+
               verification.deleteOne();
               const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: false }, constants.AUTH_SECRET);
-              return res.json({ token: token, phone: phone });
+
+              return res.json({ token: token, phone: phone, username: preference.username, description: preference.description });
             });
           } else {
             const user = new User({ phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
