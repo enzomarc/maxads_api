@@ -99,6 +99,7 @@ exports.verify = async (req, res) => {
             });
           } else {
             const user = new User({ phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
+
             await user.save((err, doc) => {
               if (err) {
                 console.error(err);
@@ -119,6 +120,12 @@ exports.verify = async (req, res) => {
   });
 }
 
+/**
+ * Authenticate the user with the given token.
+ * 
+ * @param {*} req 
+ * @param {*} res 
+ */
 exports.auth = async (req, res) => {
   const token = req.body.token;
 
@@ -136,7 +143,7 @@ exports.auth = async (req, res) => {
       await User.findOne({ phone: phone }, async (err, user) => {
         if (err) {
           console.error(err);
-          return res.status(401).json({ message: "Error during user retrieve." });
+          return res.status(401).json({ message: 'Error during user retrieve.' });
         }
 
         if (user) {
@@ -146,17 +153,17 @@ exports.auth = async (req, res) => {
             await user.save((err, saved) => {
               if (err) {
                 console.error(err);
-                return res.status(500).json({ message: "Invalid token provided." });
+                return res.status(500).json({ message: 'Invalid token provided.' });
               }
 
               const token = jwt.sign({ phone: user.phone, lastVerification: user.lastVerification, lastConnection: user.lastConnection, new: false }, constants.AUTH_SECRET);
               return res.json(token);
             });
           } else {
-            return res.status(401).json({ message: "User account is disabled." });
+            return res.status(401).json({ message: 'User account is disabled.' });
           }
         } else {
-          return res.status(401).json({ message: "Invalid token provided." })
+          return res.status(401).json({ message: 'Invalid token provided.' })
         }
       });
 

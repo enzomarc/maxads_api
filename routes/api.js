@@ -5,6 +5,7 @@ const router = express.Router();
 // Controllers
 const accountController = require('../controllers/accountController');
 const preferenceController = require('../controllers/preferenceController');
+const advertisers = require('./advertisers');
 
 // Middleware
 const authMiddleware = require('../middlewares/auth');
@@ -22,6 +23,8 @@ router.use((req, res, next) => {
 // Parse request body
 router.use(bodyParser.json({ strict: false }));
 router.use(bodyParser.urlencoded({ extended: false }));
+
+router.use('/advertisers', advertisers);
 
 router.get('/', (req, res, next) => {
     return res.json({ app: 'MaxAds API', version: 'v1.0.0' });
