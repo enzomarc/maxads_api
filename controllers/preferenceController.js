@@ -111,7 +111,6 @@ exports.avatar = async (req, res) => {
 
         if (preference) {
           if (req.file != null) {
-            console.log(req.file);
             preference.avatar = `${req.protocol}://${req.get('host')}/content/upload/pics/${req.file.filename}`;
 
             await preference.save((err, saved) => {

@@ -6,7 +6,7 @@ const advertiserController = require('../controllers/advertiserController');
 
 // Middleware
 const authMiddleware = require('../middlewares/auth');
-const multerImages = require('../middlewares/multer_images');
+const profileImage = require('../middlewares/advertisers_pics');
 
 
 // Auth routes
@@ -17,5 +17,6 @@ router.get('/', (req, res, next) => {
 router.post('/register', advertiserController.register);
 router.post('/login', advertiserController.login);
 router.get('/confirm/:code', advertiserController.verify);
+router.put('/:id', profileImage, advertiserController.update);
 
 module.exports = router;

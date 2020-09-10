@@ -33,7 +33,7 @@ exports.sendMail = async (to, subject, content) => {
 }
 
 /**
- * Parse e-mail HTML template and replace content if needed.
+ * Parse e-mail HTML template and replace content if replacements provided.
  * 
  * @param {String} file 
  * @param {Array} replacements 

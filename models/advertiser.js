@@ -16,6 +16,7 @@ const schema = new mongoose.Schema({
     enum: ['private', 'company'],
     required: true
   },
+  avatar: String,
   active: { type: Boolean, default: false },
   verified: { type: Boolean, default: false },
   lastConnection: Date,

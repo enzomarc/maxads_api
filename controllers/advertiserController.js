@@ -123,6 +123,60 @@ exports.verify = async (req, res) => {
           return res.json(true);
         });
       }
+    } else {
+      return res.status(500).json({ message: "Le compte de l'annonceur est introuvable." });
+    }
+  });
+}
+
+exports.update = async (req, res) => {
+  const id = req.params.id;
+
+  await Advertiser.findById(id, async (err, advertiser) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Une erreur est survenue lors de la modification du profil.", error: err });
+    }
+
+    if (advertiser) {
+      const data = req.body;
+      const avatar = req.file;
+
+      delete data['type'];
+      delete data['email'];
+      delete data['phone'];
+      delete data['password'];
+      delete data['active'];
+      delete data['verified'];
+      delete data['avatar'];
+
+      for (const key in data) {
+        advertiser[key] = data[key];
+      }
+
+      await advertiser.save(async (err, updated) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ message: "Une erreur est survenue lors de la modification du profil.", error: err });
+        }
+
+        if (avatar != null) {
+          advertiser.avatar = `${req.protocol}://${req.get('host')}/content/upload/advertisers_pics/${avatar.filename}`;
+
+          await advertiser.save((err, saved) => {
+            if (err) {
+              console.error(err);
+              return res.status(500).json({ message: "Une erreur est survenue lors de la modification de la photo de profil.", error: err });
+            }
+
+            return res.json({ message: "Le profil de l'annonceur a été mis à jour avec succès.", advertiser: saved });
+          });
+        }
+
+        return res.json({ message: "Le profil de l'annonceur a été mis à jour avec succès.", advertiser: updated });
+      });
+    } else {
+      return res.status(500).json({ message: "Le compte de l'annonceur est introuvable." });
     }
   });
 }
