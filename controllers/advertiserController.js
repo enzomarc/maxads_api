@@ -186,3 +186,35 @@ exports.update = async (req, res) => {
     }
   });
 }
+
+/**
+ * Close advertiser account with the given id.
+ * 
+ * @param {*} req 
+ * @param {*} res 
+ */
+exports.close = async (req, res) => {
+  const id = req.params.id;
+
+  await Advertiser.findById(id, async (err, advertiser) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Une erreur est survenue lors de la fermeture du compte annonceur.", error: err });
+    }
+    if (advertiser) {
+      advertiser.verified = false;
+      advertiser.active = false;
+
+      await advertiser.save((err, saved) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ message: "Une erreur est survenue lors de la fermeture du compte annonceur.", error: err });
+        }
+
+        return res.json({ message: "Le compte annonceur a été fermé avec succès." });
+      });
+    } else {
+      return res.status(500).json({ message: "Le compte annonceur est introuvable." });
+    }
+  });
+}
