@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const Constants = require('../utils/constants');
+const constants = require('../utils/constants');
+const mailer = require('../utils/mailer');
 const Advertiser = require('../models/advertiser');
 
 /**
@@ -34,13 +35,27 @@ exports.register = async (req, res) => {
 
       advertiser = new Advertiser(data);
 
-      await advertiser.save((err, result) => {
+      await advertiser.save(async (err, result) => {
         if (err) {
           console.error(err);
           return res.status(500).json({ message: "Une erreur est survenue lors de la création de l'annonceur." });
         }
 
-        return res.status(201).json({ message: "Votre compte annonceur a été créé avec succès, vous recevrez une confirmation par mail.", advertiser: result });
+        // Generate advertiser activation and send mail
+        const url = `${req.protocol}://${req.get('host')}/api/advertisers/confirm/${advertiser._id}`;
+        const mailContent = mailer.parseEmail('registration_confirmation.html', { VERIF_URL: url, USERNAME: advertiser.first_name + ' ' + advertiser.last_name });
+
+        await mailer.sendMail('emarc237@gmail.com', "Confirmez votre inscription", mailContent)
+          .then((sended) => {
+            if (sended)
+              return res.status(201).json({ message: "Votre compte annonceur a été créé avec succès, vous recevrez une confirmation par mail.", advertiser: result });
+            else
+              return res.status(201).json({ message: "Votre compte annonceur a été créé avec succès." });
+          })
+          .catch((err) => {
+            console.error(err);
+            return res.status(201).json({ message: "Votre compte annonceur a été créé avec succès." });
+          });
       });
     }
   });
@@ -66,7 +81,7 @@ exports.login = async (req, res) => {
         return res.status(401).json({ message: "Votre compte est inactif, vous trouverez plus amples d'informations dans votre boîte mail." });
 
       if (bcrypt.compareSync(credentials.password, advertiser.password)) {
-        const token = jwt.sign({ phone: advertiser.phone, email: advertiser.email }, Constants.ADS_SECRET);
+        const token = jwt.sign({ phone: advertiser.phone, email: advertiser.email }, constants.ADS_SECRET);
 
         return res.json({ token: token });
       } else {
@@ -74,6 +89,40 @@ exports.login = async (req, res) => {
       }
     } else {
       return res.status(401).json({ message: "Adresse email ou mot de passe invalide(s)." });
+    }
+  });
+}
+
+/**
+ * Activate advertiser account.
+ * 
+ * @param {*} req 
+ * @param {*} res 
+ */
+exports.verify = async (req, res) => {
+  const id = req.params.code;
+
+  await Advertiser.findById(id, async (err, advertiser) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json(false);
+    }
+
+    if (advertiser) {
+      if (advertiser.active) {
+        return res.status(500).json(false);
+      } else {
+        advertiser.active = true;
+
+        await advertiser.save((err, saved) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json(false);
+          }
+
+          return res.json(true);
+        });
+      }
     }
   });
 }

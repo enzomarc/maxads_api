@@ -16,5 +16,6 @@ router.get('/', (req, res, next) => {
 });
 router.post('/register', advertiserController.register);
 router.post('/login', advertiserController.login);
+router.get('/confirm/:code', advertiserController.verify);
 
 module.exports = router;
