@@ -129,6 +129,12 @@ exports.verify = async (req, res) => {
   });
 }
 
+/**
+ * Update advertiser profile basic information.
+ * 
+ * @param {*} req 
+ * @param {*} res 
+ */
 exports.update = async (req, res) => {
   const id = req.params.id;
 
