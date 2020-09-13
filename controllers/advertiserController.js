@@ -45,7 +45,7 @@ exports.register = async (req, res) => {
         const url = `${req.protocol}://${req.get('host')}/api/advertisers/confirm/${advertiser._id}`;
         const mailContent = mailer.parseEmail('registration_confirmation.html', { VERIF_URL: url, USERNAME: advertiser.first_name + ' ' + advertiser.last_name });
 
-        await mailer.sendMail('emarc237@gmail.com', "Confirmez votre inscription", mailContent)
+        await mailer.sendMail(advertiser.email, "Confirmez votre inscription", mailContent)
           .then((sended) => {
             if (sended)
               return res.status(201).json({ message: "Votre compte annonceur a été créé avec succès, vous recevrez une confirmation par mail.", advertiser: result });
