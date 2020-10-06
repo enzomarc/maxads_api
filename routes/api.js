@@ -31,13 +31,16 @@ router.get('/', (req, res, next) => {
 });
 
 // Auth routes
-router.get('/check-registration/:phone', accountController.checkRegistration);
+router.get('/check-registration/:prefix/:phone', accountController.checkRegistration);
 router.post('/check-code', accountController.verify);
 router.post('/auth', accountController.auth);
 
 // Preferences routes
-router.get('/preferences/:phone', preferenceController.show);
-router.post('/preferences/:phone', preferenceController.store);
-router.post('/preferences/:phone/avatar', multerImages, preferenceController.avatar);
+router.get('/preferences/:prefix/:phone', preferenceController.show);
+router.post('/preferences/:prefix/:phone', preferenceController.store);
+router.post('/preferences/:prefix/:phone/avatar', multerImages, preferenceController.avatar);
+
+// Accounts routes
+router.get('/accounts/:prefix/:phone/exists', accountController.exists);
 
 module.exports = router;

@@ -10,8 +10,9 @@ const Preference = require("../models/preference");
  */
 exports.store = async (req, res) => {
   const phone = req.params.phone;
+  const prefix = req.params.prefix;
 
-  await User.findOne({ phone: phone }, async (err, user) => {
+  await User.findOne({ prefix: prefix, phone: phone }, async (err, user) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ message: "Impossible de modifier les paramètres de l'utilisateur.", error: err });
@@ -25,11 +26,13 @@ exports.store = async (req, res) => {
         }
 
         if (preference) {
-          await preference.update(req.body, (err, save) => {
+          await preference.update(req.body, async (err, save) => {
             if (err) {
               console.error(err);
               return res.status(500).json({ message: "Impossible de modifier les paramètres de l'utilisateur.", error: err });
             }
+
+            await user.updateOne({ preferences: save._id });
 
             return res.json({ message: "Paramètres modifiés avec succès.", preference: preference });
           });
@@ -39,11 +42,13 @@ exports.store = async (req, res) => {
             ...req.body
           };
 
-          await Preference.create(data, (err, doc) => {
+          await Preference.create(data, async (err, doc) => {
             if (err) {
               console.error(err);
               return res.status(500).json({ message: "Impossible de modifier les paramètres de l'utilisateur.", error: err });
             }
+
+            await user.updateOne({ preferences: doc._id });
 
             return res.json({ message: "Paramètres modifiés avec succès.", preference: doc });
           });
@@ -61,30 +66,44 @@ exports.store = async (req, res) => {
  */
 exports.show = async (req, res) => {
   const phone = req.params.phone;
+  const prefix = req.params.prefix;
 
-  await User.findOne({ phone: phone }, async (err, user) => {
+  await User.findOne({ prefix: prefix, phone: phone }).populate('preferences').exec((err, user) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur.", error: err });
     }
 
-    if (user) {
-      await Preference.findOne({ user_id: user._id }, async (err, preference) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur.", error: err });
-        }
-
-        if (preference) {
-          return res.json(preference);
-        } else {
-          return res.status(404).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur." });
-        }
-      });
+    if (user.preferences) {
+      return res.json(user.preferences);
     } else {
       return res.status(404).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur." });
     }
   });
+
+  // await User.findOne({ phone: phone }, async (err, user) => {
+  //   if (err) {
+  //     console.error(err);
+  //     return res.status(500).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur.", error: err });
+  //   }
+
+  //   if (user) {
+  //     await Preference.findOne({ user_id: user._id }, async (err, preference) => {
+  //       if (err) {
+  //         console.error(err);
+  //         return res.status(500).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur.", error: err });
+  //       }
+
+  //       if (preference) {
+  //         return res.json(preference);
+  //       } else {
+  //         return res.status(404).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur." });
+  //       }
+  //     });
+  //   } else {
+  //     return res.status(404).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur." });
+  //   }
+  // });
 }
 
 /**
@@ -95,8 +114,9 @@ exports.show = async (req, res) => {
  */
 exports.avatar = async (req, res) => {
   const phone = req.params.phone;
+  const prefix = req.params.prefix;
 
-  await User.findOne({ phone: phone }, async (err, user) => {
+  await User.findOne({ prefix: prefix, phone: phone }, async (err, user) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ message: "Impossible d'obtenir les paramètres de l'utilisateur.", error: err });

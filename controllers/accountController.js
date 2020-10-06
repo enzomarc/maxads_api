@@ -15,29 +15,26 @@ const constants = require('../utils/constants');
  */
 exports.checkRegistration = async (req, res) => {
   const phone = req.params.phone;
+  const prefix = req.params.prefix;
 
-  if (!helpers.checkPhone(phone))
-    return res.status(500).json(false);
-  else {
-    await User.findOne({ phone: phone }, async (err, user) => {
+  await User.findOne({ phone: phone }, async (err, user) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json(false);
+    }
+
+    const code = helpers.randomCode(4);
+    const data = { prefix: prefix, phone: phone, code: bcrypt.hashSync(code, bcrypt.genSaltSync()) };
+
+    await Verification.create(data, async (err, doc) => {
       if (err) {
         console.error(err);
         return res.status(500).json(false);
       }
 
-      const code = helpers.randomCode(4);
-      const data = { phone: phone, code: bcrypt.hashSync(code, bcrypt.genSaltSync()) };
-
-      await Verification.create(data, (err, doc) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json(false);
-        }
-
-        const sms = "Votre code MaxAds est " + code + ", vous pouvez appuyer sur ce lien pour vérifier votre appareil: https://v.maxads.com/" + code;
-        let sended = helpers.sendSms(phone, sms);
-
-        if (sended) {
+      const sms = "Votre code MaxAds est " + code + ", vous pouvez appuyer sur ce lien pour vérifier votre appareil: https://v.maxads.com/" + code;
+      await helpers.sendSms(prefix + phone, sms).then((sended) => {
+        if (sended == true) {
           if (user != null)
             user.update({ lastVerification: new Date() });
 
@@ -48,7 +45,7 @@ exports.checkRegistration = async (req, res) => {
         }
       });
     });
-  }
+  });
 }
 
 /**
@@ -60,8 +57,9 @@ exports.checkRegistration = async (req, res) => {
 exports.verify = async (req, res) => {
   const code = req.body.code;
   const phone = req.body.phone;
+  const prefix = req.body.prefix;
 
-  await Verification.find({ phone: phone }, (err, verifications) => {
+  await Verification.find({ prefix: prefix, phone: phone }, (err, verifications) => {
     if (err) {
       console.error(err);
       return res.json(false);
@@ -77,28 +75,28 @@ exports.verify = async (req, res) => {
         const now = new Date();
         founded = true;
 
-        await User.findOne({ phone: verification.phone }, async (err, doc) => {
+        await User.findOne({ prefix: verification.prefix, phone: verification.phone }, async (err, doc) => {
           if (err) {
             console.error(err);
             return res.status(500).json(false);
           }
 
           if (doc != null) {
-            await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now }, async (err, updated) => {
+            const preference = await Preference.findOne({ user_id: doc._id });
+
+            await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now, preferences: preference ? preference._id : null }, async (err, updated) => {
               if (err) {
                 console.error(err);
                 return res.status(500).json(false);
               }
 
-              const preference = await Preference.findOne({ user_id: doc._id });
-
               verification.deleteOne();
-              const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: false }, constants.AUTH_SECRET);
+              const token = jwt.sign({ prefix: verification.prefix, phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: false }, constants.AUTH_SECRET);
 
-              return res.json({ token: token, phone: phone, username: preference.username, description: preference.description });
+              return res.json({ token: token, prefix: prefix, phone: phone, username: preference.username, description: preference.description });
             });
           } else {
-            const user = new User({ phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
+            const user = new User({ prefix: verification.prefix, phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
 
             await user.save((err, doc) => {
               if (err) {
@@ -107,8 +105,9 @@ exports.verify = async (req, res) => {
               }
 
               verification.deleteOne();
-              const token = jwt.sign({ phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: true }, constants.AUTH_SECRET);
-              return res.json({ token: token, phone: phone });
+
+              const token = jwt.sign({ prefix: doc.prefix, phone: doc.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: true }, constants.AUTH_SECRET);
+              return res.json({ token: token, prefix: doc.prefix, phone: doc.phone });
             });
           }
         });
@@ -139,8 +138,9 @@ exports.auth = async (req, res) => {
 
     if (decoded) {
       const phone = decoded.phone;
+      const prefix = decoded.prefix;
 
-      await User.findOne({ phone: phone }, async (err, user) => {
+      await User.findOne({ prefix: prefix, phone: phone }, async (err, user) => {
         if (err) {
           console.error(err);
           return res.status(401).json({ message: 'Error during user retrieve.' });
@@ -156,7 +156,7 @@ exports.auth = async (req, res) => {
                 return res.status(500).json({ message: 'Invalid token provided.' });
               }
 
-              const token = jwt.sign({ phone: user.phone, lastVerification: user.lastVerification, lastConnection: user.lastConnection, new: false }, constants.AUTH_SECRET);
+              const token = jwt.sign({ prefix: user.prefix, phone: user.phone, lastVerification: user.lastVerification, lastConnection: user.lastConnection, new: false }, constants.AUTH_SECRET);
               return res.json(token);
             });
           } else {
@@ -169,5 +169,33 @@ exports.auth = async (req, res) => {
 
       return true;
     } else return false;
+  });
+}
+
+/**
+ * Check weither a given user exists.
+ * 
+ * @param {Request} req 
+ * @param {Response} res 
+ */
+exports.exists = async (req, res) => {
+  const phone = req.params.phone;
+  const prefix = req.params.prefix;
+
+  await User.findOne({ prefix: prefix, phone: phone }).populate('preferences').exec(async (err, user) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json(false);
+    }
+
+    if (user) {
+      console.log(user);
+      const description = user.preferences ? user.preferences.description : "";
+      const avatar = user.preferences ? user.preferences.avatar : "";
+
+      return res.json({ prefix: user.prefix, phone: user.phone, actu: description, avatar: avatar });
+    } else {
+      return res.json(false);
+    }
   });
 }
