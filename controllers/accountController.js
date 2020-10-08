@@ -106,7 +106,7 @@ exports.verify = async (req, res) => {
 
               verification.deleteOne();
 
-              const token = jwt.sign({ prefix: doc.prefix, phone: doc.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: true }, constants.AUTH_SECRET);
+              const token = jwt.sign({ id: doc._id, prefix: doc.prefix, phone: doc.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: true }, constants.AUTH_SECRET);
               return res.json({ token: token, prefix: doc.prefix, phone: doc.phone });
             });
           }
@@ -156,7 +156,7 @@ exports.auth = async (req, res) => {
                 return res.status(500).json({ message: 'Invalid token provided.' });
               }
 
-              const token = jwt.sign({ prefix: user.prefix, phone: user.phone, lastVerification: user.lastVerification, lastConnection: user.lastConnection, new: false }, constants.AUTH_SECRET);
+              const token = jwt.sign({ id: user._id, prefix: user.prefix, phone: user.phone, lastVerification: user.lastVerification, lastConnection: user.lastConnection, new: false }, constants.AUTH_SECRET);
               return res.json(token);
             });
           } else {
@@ -173,7 +173,7 @@ exports.auth = async (req, res) => {
 }
 
 /**
- * Check weither a given user exists.
+ * Check wether a given user exists.
  * 
  * @param {Request} req 
  * @param {Response} res 
@@ -193,7 +193,7 @@ exports.exists = async (req, res) => {
       const description = user.preferences ? user.preferences.description : "";
       const avatar = user.preferences ? user.preferences.avatar : "";
 
-      return res.json({ prefix: user.prefix, phone: user.phone, actu: description, avatar: avatar });
+      return res.json({ id: user._id, prefix: user.prefix, phone: user.phone, actu: description, avatar: avatar });
     } else {
       return res.json(false);
     }

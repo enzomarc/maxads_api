@@ -8,6 +8,7 @@ const schema = new mongoose.Schema({
     active: { type: Boolean, default: false },
     verified: { type: Boolean, default: false },
     preferences: { unique: true, type: mongoose.Types.ObjectId, ref: 'Preference' },
+    discussions: [{ type: mongoose.Types.ObjectId, ref: 'Discussion' }],
     lastConnection: Date,
     lastVerification: Date,
 }, { timestamps: true });

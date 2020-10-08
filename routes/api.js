@@ -5,6 +5,7 @@ const router = express.Router();
 // Controllers
 const accountController = require('../controllers/accountController');
 const preferenceController = require('../controllers/preferenceController');
+const discussionController = require('../controllers/discussionController');
 const advertisers = require('./advertisers');
 
 // Middleware
@@ -42,5 +43,9 @@ router.post('/preferences/:prefix/:phone/avatar', multerImages, preferenceContro
 
 // Accounts routes
 router.get('/accounts/:prefix/:phone/exists', accountController.exists);
+
+// Discussions routes
+router.get('/discussions/:prefix/:phone', discussionController.all);
+router.post('/discussions/:prefix/:phone/new', discussionController.store);
 
 module.exports = router;
