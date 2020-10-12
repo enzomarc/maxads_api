@@ -1,8 +1,8 @@
 const axios = require('axios').default;
 
 // Constants
-const smsApiUser = "emarc237@gmail.com";
-const smsApiPassword = "j5nU51cM";
+const smsApiUser = "groupebbf2020@gmail.com";
+const smsApiPassword = "l3oM4UgD";
 const smsApiSender = "MaxAds";
 
 exports.smsApiUrl = (message, destination = "") => {

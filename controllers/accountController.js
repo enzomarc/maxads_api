@@ -5,6 +5,7 @@ const Verification = require('../models/verification');
 const Preference = require('../models/preference');
 const helpers = require('../utils/helpers');
 const constants = require('../utils/constants');
+const preference = require('../models/preference');
 
 
 /**
@@ -83,8 +84,12 @@ exports.verify = async (req, res) => {
 
           if (doc != null) {
             const preference = await Preference.findOne({ user_id: doc._id });
+            if (!preference) {
+              preference = new Preference({ user_id: doc._id });
+              preference.save();
+            }
 
-            await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now, preferences: preference ? preference._id : null }, async (err, updated) => {
+            await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now, preferences: preference._id }, async (err, updated) => {
               if (err) {
                 console.error(err);
                 return res.status(500).json(false);
@@ -98,13 +103,18 @@ exports.verify = async (req, res) => {
           } else {
             const user = new User({ prefix: verification.prefix, phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
 
-            await user.save((err, doc) => {
+            await user.save(async (err, doc) => {
               if (err) {
                 console.error(err);
                 return res.status(500).json(false);
               }
 
               verification.deleteOne();
+
+              const preference = new Preference({ user_id: doc._id });
+              preference.save();
+
+              await doc.updateOne({ preferences: preference._id });
 
               const token = jwt.sign({ id: doc._id, prefix: doc.prefix, phone: doc.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: true }, constants.AUTH_SECRET);
               return res.json({ token: token, prefix: doc.prefix, phone: doc.phone });

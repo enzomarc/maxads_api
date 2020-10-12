@@ -46,6 +46,6 @@ router.get('/accounts/:prefix/:phone/exists', accountController.exists);
 
 // Discussions routes
 router.get('/discussions/:prefix/:phone', discussionController.all);
-router.post('/discussions/:prefix/:phone/new', discussionController.store);
+router.post('/discussions/new', discussionController.store);
 
 module.exports = router;
