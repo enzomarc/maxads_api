@@ -11,8 +11,7 @@ const profileImage = require('../middlewares/advertisers_pics');
 
 // Auth routes
 router.get('/', (req, res, next) => {
-  console.log("Called advertisers");
-  return res.status(201).json({ message: "A new message for nothing." });
+  return res.status(201).json({ message: "Advertisers are always happy when i'm alive." });
 });
 router.post('/register', advertiserController.register);
 router.post('/login', advertiserController.login);

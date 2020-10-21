@@ -26,13 +26,13 @@ exports.store = async (req, res) => {
         }
 
         if (preference) {
-          await preference.update(req.body, async (err, save) => {
+          await preference.updateOne(req.body, async (err, save) => {
             if (err) {
               console.error(err);
               return res.status(500).json({ message: "Impossible de modifier les paramètres de l'utilisateur.", error: err });
             }
 
-            await user.updateOne({ preferences: save._id });
+            await user.updateOne({ preferences: preference._id });
 
             return res.json({ message: "Paramètres modifiés avec succès.", preference: preference });
           });
@@ -42,7 +42,8 @@ exports.store = async (req, res) => {
             ...req.body
           };
 
-          await Preference.create(data, async (err, doc) => {
+          const pref = new Preference(data);
+          await pref.save(async (err, doc) => {
             if (err) {
               console.error(err);
               return res.status(500).json({ message: "Impossible de modifier les paramètres de l'utilisateur.", error: err });

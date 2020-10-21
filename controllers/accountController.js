@@ -6,6 +6,7 @@ const Preference = require('../models/preference');
 const helpers = require('../utils/helpers');
 const constants = require('../utils/constants');
 const preference = require('../models/preference');
+const mongoose = require('mongoose');
 
 
 /**
@@ -33,18 +34,20 @@ exports.checkRegistration = async (req, res) => {
         return res.status(500).json(false);
       }
 
-      const sms = "Votre code MaxAds est " + code + ", vous pouvez appuyer sur ce lien pour vérifier votre appareil: https://v.maxads.com/" + code;
-      await helpers.sendSms(prefix + phone, sms).then((sended) => {
-        if (sended == true) {
-          if (user != null)
-            user.update({ lastVerification: new Date() });
+      // const sms = "Votre code MaxAds est " + code + ", vous pouvez appuyer sur ce lien pour vérifier votre appareil: https://v.maxads.com/" + code;
+      // await helpers.sendSms(prefix + phone, sms).then((sended) => {
+      //   if (sended == true) {
+      //     if (user != null)
+      //       user.update({ lastVerification: new Date() });
 
-          return res.json(true);
-        } else {
-          doc.deleteOne();
-          return res.json(false);
-        }
-      });
+      //     return res.json(true);
+      //   } else {
+      //     doc.deleteOne();
+      //     return res.json(false);
+      //   }
+      // });
+      console.log(code);
+      return res.json(true);
     });
   });
 }
@@ -84,21 +87,28 @@ exports.verify = async (req, res) => {
 
           if (doc != null) {
             const preference = await Preference.findOne({ user_id: doc._id });
+
             if (!preference) {
               preference = new Preference({ user_id: doc._id });
-              preference.save();
+              await preference.save();
             }
 
-            await doc.updateOne({ active: true, verified: true, lastConnection: now, lastVerification: now, preferences: preference._id }, async (err, updated) => {
+            doc.preferences = mongoose.Types.ObjectId(preference._id);
+            doc.active = true;
+            doc.verified = true;
+            doc.lastConnection = now;
+            doc.lastVerification = now;
+
+            await doc.save(async (err, product) => {
               if (err) {
                 console.error(err);
                 return res.status(500).json(false);
               }
 
-              verification.deleteOne();
               const token = jwt.sign({ prefix: verification.prefix, phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: false }, constants.AUTH_SECRET);
+              await verification.deleteOne();
 
-              return res.json({ token: token, prefix: prefix, phone: phone, username: preference.username, description: preference.description });
+              return res.json({ token: token, prefix: prefix, phone: phone, username: preference.username, description: preference.description, avatar: preference.avatar });
             });
           } else {
             const user = new User({ prefix: verification.prefix, phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
@@ -199,7 +209,6 @@ exports.exists = async (req, res) => {
     }
 
     if (user) {
-      console.log(user);
       const description = user.preferences ? user.preferences.description : "";
       const avatar = user.preferences ? user.preferences.avatar : "";
 

@@ -12,12 +12,14 @@ exports.all = async (req, res) => {
   const prefix = req.params.prefix;
   const phone = req.params.phone;
 
-  const user = await User.findOne({ prefix: prefix, phone: phone }).populate('discussions');
+  const user = await User.findOne({ prefix: prefix, phone: phone });
 
-  console.log(user);
+  if (user) {
+    const discussions = await Discussion.find({ from: user._id }).populate('messages');
+    console.log(discussions);
 
-  if (user)
-    return res.json(user.discussions);
+    return res.json(discussions);
+  }
   else
     return res.json(false);
 }
@@ -30,14 +32,13 @@ exports.all = async (req, res) => {
  */
 exports.store = async (req, res) => {
   const body = req.body
-
   const user = await User.findById(body.from).populate('discussions');
 
   if (user) {
     const toUser = await User.findById(body.to);
 
     if (toUser) {
-      let discussion = await Discussion.findOne({ from: user._id, to: body.to }).populate('messages');
+      let discussion = await Discussion.findOne({ from: user._id, to: toUser._id }).populate('messages');
 
       if (!discussion) {
         discussion = new Discussion({ from: user._id, to: body.to });
@@ -45,18 +46,18 @@ exports.store = async (req, res) => {
         await discussion.save(async (err, saved) => {
           if (err) {
             console.error(err);
-            return res.json({ message: "Impossible de créer une nouvelle discussion." });
+            return res.status(500).json({ message: "Impossible de créer une nouvelle discussion." });
           }
 
-          const message = new Message({ discussion: discussion._id, type: body.type, content: body.content });
+          const message = new Message({ discussion: discussion._id, type: body.type, content: body.content, from: body.from });
           await message.save();
 
           discussion.messages.push(message);
           await discussion.save();
 
           if (user._id != toUser._id) {
-            user.discussions.push(discussion);
-            toUser.discussions.push(discussion);
+            user.discussions.push(discussion._id);
+            toUser.discussions.push(new Discussion({ from: toUser._id, to: user._id }));
             await user.save();
             await toUser.save();
           } else {
@@ -65,7 +66,7 @@ exports.store = async (req, res) => {
           }
         });
       } else {
-        const message = new Message({ discussion: discussion._id, type: body.type, content: body.content });
+        const message = new Message({ discussion: discussion._id, type: body.type, content: body.content, from: body.from });
         await message.save();
 
         discussion.messages.push(message);
@@ -83,8 +84,6 @@ exports.store = async (req, res) => {
       }
 
       discussion = await discussion.populate('messages').execPopulate();
-
-      console.log(discussion);
       return res.json(discussion);
     }
   }
