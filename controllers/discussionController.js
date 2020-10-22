@@ -38,7 +38,7 @@ exports.store = async (req, res) => {
     const toUser = await User.findById(body.to);
 
     if (toUser) {
-      let discussion = await Discussion.findOne({ from: user._id, to: toUser._id }).populate('messages');
+      let discussion = await Discussion.findOne({ from: user._id, to: toUser._id });
 
       if (!discussion) {
         discussion = new Discussion({ from: user._id, to: body.to });
@@ -83,7 +83,6 @@ exports.store = async (req, res) => {
         }
       }
 
-      discussion = await discussion.populate('messages').execPopulate();
       return res.json(discussion);
     }
   }
