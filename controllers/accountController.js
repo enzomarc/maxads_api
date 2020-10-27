@@ -19,7 +19,7 @@ exports.checkRegistration = async (req, res) => {
   const phone = req.params.phone;
   const prefix = req.params.prefix;
 
-  await User.findOne({ phone: phone }, async (err, user) => {
+  await User.findOne({ prefix: prefix, phone: phone }, async (err, user) => {
     if (err) {
       console.error(err);
       return res.status(500).json(false);
@@ -108,7 +108,7 @@ exports.verify = async (req, res) => {
               const token = jwt.sign({ prefix: verification.prefix, phone: verification.phone, lastVerification: doc.lastVerification, lastConnection: doc.lastConnection, new: false }, constants.AUTH_SECRET);
               await verification.deleteOne();
 
-              return res.json({ token: token, prefix: prefix, phone: phone, username: preference.username, description: preference.description, avatar: preference.avatar });
+              return res.json({ token: token, prefix: prefix, phone: phone, username: preference.username, description: preference.description, avatar: `${req.protocol}://${req.get('host')}${preference.avatar}` });
             });
           } else {
             const user = new User({ prefix: verification.prefix, phone: verification.phone, active: true, verified: true, lastVerification: now, lastConnection: now });
@@ -210,7 +210,7 @@ exports.exists = async (req, res) => {
 
     if (user) {
       const description = user.preferences ? user.preferences.description : "";
-      const avatar = user.preferences ? user.preferences.avatar : "";
+      const avatar = user.preferences ? `${req.protocol}://${req.get('host')}${user.preferences.avatar}` : "";
 
       return res.json({ id: user._id, prefix: user.prefix, phone: user.phone, actu: description, avatar: avatar });
     } else {
